@@ -34,3 +34,19 @@ func NewLoginRequest(username, password string) *[]RequestLogin {
 		},
 	}
 }
+
+// ResponseLogin used to unmarshal the json response from Login command
+type ResponseLogin struct {
+	Cmd   string             `json:"cmd"`
+	Code  int                `json:"code"`
+	Value responseLoginValue `json:"value"`
+}
+
+type responseLoginValue struct {
+	Token responseLoginToken `json:"Token"`
+}
+
+type responseLoginToken struct {
+	LeaseTime int    `json:"leaseTime"`
+	Name      string `json:"name"`
+}

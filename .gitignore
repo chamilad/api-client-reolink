@@ -23,3 +23,9 @@ go.work.sum
 
 # env file
 .env
+
+# temporary tests
+test_script/
+
+# build artefacts
+build/
