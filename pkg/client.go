@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/chamilad/api-client-reolink/pkg/models"
 	"github.com/rs/zerolog/log"
@@ -74,19 +75,6 @@ func (c *RLClient) Login(username, password string) (string, error) {
 		return "", fmt.Errorf("error while building login payload: %v", err)
 	}
 
-	// loginURL := fmt.Sprintf("%s/cgi-bin/api.cgi", c.host)
-	// req, err := http.NewRequest("POST", loginURL, bytes.NewBuffer(payload))
-	// if err != nil {
-	// 	return "", fmt.Errorf("error while building login request: %v", err)
-	// }
-
-	// req.Header.Add("Content-Type", "application/json")
-
-	// q := req.URL.Query()
-	// q.Add("cmd", "Login")
-	// q.Add("token", "null")
-	// req.URL.RawQuery = q.Encode()
-
 	req, err := c.NewAPIRequest("Login", bytes.NewBuffer(payload))
 	if err != nil {
 		return "", fmt.Errorf("error while building login request: %v", err)
@@ -104,7 +92,6 @@ func (c *RLClient) Login(username, password string) (string, error) {
 		return "", fmt.Errorf("error while reading login response: %v", err)
 	}
 
-	// fmt.Println("login response body: ", string(respBody))
 	loginResponse := []models.ResponseLogin{}
 	err = json.Unmarshal(respBody, &loginResponse)
 	if err != nil {
@@ -122,29 +109,60 @@ func (c *RLClient) Login(username, password string) (string, error) {
 }
 
 // GetTime reads the current time off the camera
-func (c *RLClient) GetTime() (string, error) {
+func (c *RLClient) GetTime() (time.Time, error) {
 	payload, err := json.Marshal(models.NewGetTimeRequest())
 	if err != nil {
-		return "", fmt.Errorf("error while building gettime payload: %v", err)
+		return time.Time{}, fmt.Errorf("error while building gettime payload: %v", err)
 	}
 
 	req, err := c.NewAPIRequest("GetTime", bytes.NewBuffer(payload))
 	if err != nil {
-		return "", fmt.Errorf("error while building gettime request: %v", err)
+		return time.Time{}, fmt.Errorf("error while building gettime request: %v", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("error while making gettime request: %v", err)
+		return time.Time{}, fmt.Errorf("error while making gettime request: %v", err)
 	}
 
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error while reading login response: %v", err)
+		return time.Time{}, fmt.Errorf("error while reading gettime response: %v", err)
 	}
 
-	fmt.Println("gettime response body: ", string(respBody))
-	return string(respBody), nil
+	// todo: build a datetime representation here
+	// fmt.Println("gettime response body: ", string(respBody))
+	getTimeResp := []models.ResponseGetTime{}
+	if err = json.Unmarshal(respBody, &getTimeResp); err != nil {
+		return time.Time{}, fmt.Errorf("error while building gettime response: %v", err)
+	}
+
+	if len(getTimeResp) != 1 {
+		return time.Time{}, fmt.Errorf("maformed response received from gettime: %s", string(respBody))
+	}
+
+	cameraTime := getTimeResp[0]
+
+	// todo: needs this as an input
+	// a kind of a buffer overflow can be seen for the time zone field in the returned value from the API
+	// +13 is shown as -43200 with the range showing 43200-(-46800). My guess is +13 overflows
+	// into being -43200.
+	// This causes ambiguity between NZ DST and actual GMT-12 so the time zone has to be an input
+	// This will probably force the tz db mount if run inside docker
+	tempLocation, err := time.LoadLocation("Pacific/Auckland")
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error while trying to load time zone: %v", err)
+	}
+
+	return time.Date(
+		cameraTime.Value.Time.Year,
+		time.Month(cameraTime.Value.Time.Month),
+		cameraTime.Value.Time.Day,
+		cameraTime.Value.Time.Hour,
+		cameraTime.Value.Time.Minute,
+		cameraTime.Value.Time.Second,
+		0,
+		tempLocation), nil
 }

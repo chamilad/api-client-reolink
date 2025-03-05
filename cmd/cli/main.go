@@ -33,5 +33,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	client.GetTime()
+	cameraTime, err := client.GetTime()
+	if err != nil {
+		log.Error().Msg(fmt.Sprintf("error while getting time: %v", err))
+		os.Exit(1)
+	}
+
+	log.Info().Msg(fmt.Sprintf("time at camera: %s", cameraTime))
 }

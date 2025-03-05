@@ -16,3 +16,23 @@ func NewGetTimeRequest() *[]RequestGetTime {
 		},
 	}
 }
+
+// ResponseGetTime represents the response received
+type ResponseGetTime struct {
+	Cmd   string           `json:"cmd"`
+	Code  int              `json:"code"`
+	Value respGetTimeValue `json:"value"`
+}
+
+type respGetTimeValue struct {
+	Time respGetTimeTime `json:"Time"`
+}
+
+type respGetTimeTime struct {
+	Day    int `json:"day"`
+	Month  int `json:"mon"`
+	Year   int `json:"year"`
+	Hour   int `json:"hour"`
+	Minute int `json:"min"`
+	Second int `json:"sec"`
+}
